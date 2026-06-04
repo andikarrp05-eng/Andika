@@ -1,13 +1,8 @@
-
 import streamlit as st
 import pandas as pd
 import requests
 import folium
 from streamlit_folium import st_folium
-
-# ==========================
-# KONFIGURASI HALAMAN
-# ==========================
 
 st.set_page_config(
     page_title="SeismoTrack Indonesia",
@@ -15,31 +10,17 @@ st.set_page_config(
     layout="wide"
 )
 
-# ==========================
-# HEADER
-# ==========================
-
 st.title("🌍 SeismoTrack Indonesia")
-st.markdown(
-"""
+st.markdown("""
 ### Sistem Monitoring Gempa Bumi Indonesia
 Data realtime bersumber dari BMKG
 ---
-"""
-)
-
-# ==========================
-# SIDEBAR
-# ==========================
+""")
 
 st.sidebar.title("⚙️ Panel Kontrol")
 st.sidebar.markdown("---")
 
 URL = "https://data.bmkg.go.id/DataMKG/TEWS/gempadirasakan.json"
-
-# ==========================
-# AMBIL DATA BMKG
-# ==========================
 
 @st.cache_data(ttl=300)
 def load_data():
@@ -53,28 +34,19 @@ def load_data():
 
         coord = g["Coordinates"].split(",")
 
-        lat = float(coord[0])
-        lon = float(coord[1])
-
         rows.append({
             "Tanggal": g["Tanggal"],
             "Jam": g["Jam"],
             "Magnitude": float(g["Magnitude"]),
             "Kedalaman": g["Kedalaman"],
             "Wilayah": g["Wilayah"],
-            "Lintang": lat,
-            "Bujur": lon,
+            "Koordinat": g["Coordinates"],
             "Dirasakan": g.get("Dirasakan", "-")
         })
 
     return pd.DataFrame(rows)
 
-
 df = load_data()
-
-# ==========================
-# FILTER
-# ==========================
 
 st.sidebar.subheader("🔍 Filter")
 
@@ -93,7 +65,7 @@ keyword = st.sidebar.text_input(
 
 hasil = df[df["Magnitude"] >= min_mag]
 
-if keyword != "":
+if keyword:
     hasil = hasil[
         hasil["Wilayah"].str.contains(
             keyword,
@@ -102,44 +74,27 @@ if keyword != "":
         )
     ]
 
-# ==========================
-# DASHBOARD
-# ==========================
-
 st.subheader("📊 Dashboard")
 
-col1, col2, col3, col4 = st.columns(4)
+c1, c2, c3 = st.columns(3)
 
-col1.metric(
+c1.metric(
     "📌 Total Gempa",
     len(hasil)
 )
 
 if len(hasil) > 0:
-
-    col2.metric(
-        "📈 Magnitudo Max",
+    c2.metric(
+        "📈 Magnitudo Maks",
         hasil["Magnitude"].max()
     )
 
-    col3.metric(
-        "📊 Rata-rata M",
-        round(
-            hasil["Magnitude"].mean(),
-            2
-        )
+    c3.metric(
+        "📊 Rata-rata Magnitudo",
+        round(hasil["Magnitude"].mean(), 2)
     )
 
-    col4.metric(
-        "🔎 Wilayah",
-        keyword if keyword else "Semua"
-    )
-
-# ==========================
-# PETA GEMPA
-# ==========================
-
-st.subheader("🗺️ Peta Gempa Indonesia")
+st.subheader("🗺️ Peta Gempa")
 
 peta = folium.Map(
     location=[-2.5, 118],
@@ -148,28 +103,30 @@ peta = folium.Map(
 
 for _, r in hasil.iterrows():
 
+    koordinat = r["Koordinat"].split(",")
+
+    lat = float(koordinat[0])
+    lon = float(koordinat[1])
+
+    warna = "green"
+
     if r["Magnitude"] >= 6:
         warna = "red"
     elif r["Magnitude"] >= 5:
         warna = "orange"
-    else:
-        warna = "green"
 
     folium.CircleMarker(
-        location=[
-            r["Lintang"],
-            r["Bujur"]
-        ],
+        location=[lat, lon],
         radius=r["Magnitude"] * 2,
         color=warna,
         fill=True,
         fill_opacity=0.8,
         popup=f"""
-<b>{r['Wilayah']}</b><br>
-Tanggal : {r['Tanggal']}<br>
-Jam : {r['Jam']}<br>
-Magnitudo : {r['Magnitude']}<br>
-Kedalaman : {r['Kedalaman']}<br>
+Wilayah : {r['Wilayah']}
+Tanggal : {r['Tanggal']}
+Jam : {r['Jam']}
+Magnitudo : {r['Magnitude']}
+Kedalaman : {r['Kedalaman']}
 Dirasakan : {r['Dirasakan']}
 """
     ).add_to(peta)
@@ -180,22 +137,12 @@ st_folium(
     height=500
 )
 
-# ==========================
-# GRAFIK MAGNITUDO
-# ==========================
-
 st.subheader("📈 Grafik Magnitudo")
 
-chart = hasil[[
-    "Wilayah",
-    "Magnitude"
-]].set_index("Wilayah")
+grafik = hasil[["Wilayah", "Magnitude"]]
+grafik = grafik.set_index("Wilayah")
 
-st.bar_chart(chart)
-
-# ==========================
-# TABEL DATA
-# ==========================
+st.bar_chart(grafik)
 
 st.subheader("📋 Data Gempa")
 
@@ -203,10 +150,6 @@ st.dataframe(
     hasil,
     use_container_width=True
 )
-
-# ==========================
-# DETAIL GEMPA
-# ==========================
 
 st.subheader("🔍 Detail Gempa")
 
@@ -221,29 +164,18 @@ if len(hasil) > 0:
         hasil.loc[pilih]
     )
 
-# ==========================
-# DOWNLOAD CSV
-# ==========================
-
 csv = hasil.to_csv(
     index=False
-).encode(
-    "utf-8"
-)
+).encode("utf-8")
 
 st.download_button(
-    label="📥 Download Data Gempa",
-    data=csv,
-    file_name="Data_Gempa_BMKG.csv",
-    mime="text/csv"
+    "📥 Download CSV",
+    csv,
+    "Data_Gempa_BMKG.csv",
+    "text/csv"
 )
-
-# ==========================
-# FOOTER
-# ==========================
 
 st.markdown("---")
 st.caption(
     "SeismoTrack Indonesia | Data Realtime BMKG | Dibuat dengan Streamlit"
 )
-```
