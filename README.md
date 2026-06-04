@@ -1,0 +1,2 @@
+# Andika
+Aplikasi pembaca gempa
