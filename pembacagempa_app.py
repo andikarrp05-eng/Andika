@@ -27,7 +27,7 @@ def load_data():
         lat = float(coord[0])
         lon = float(coord[1])
 
-       rows.append({
+      rows.append({
     "Tanggal": g["Tanggal"],
     "Jam": g["Jam"],
     "Magnitude": float(g["Magnitude"]),
@@ -35,7 +35,7 @@ def load_data():
     "Wilayah": g["Wilayah"],
     "Lintang": lat,
     "Bujur": lon,
-    "Potensi": g["Potensi"]
+    "Dirasakan": g.get("Dirasakan", "-")
 })
     return pd.DataFrame(rows)
 
