@@ -1,3 +1,4 @@
+```python
 import streamlit as st
 import pandas as pd
 import requests
@@ -17,17 +18,18 @@ URL = "https://data.bmkg.go.id/DataMKG/TEWS/gempadirasakan.json"
 
 @st.cache_data(ttl=300)
 def load_data():
-    r = requests.get(URL)
-    data = r.json()
+    response = requests.get(URL)
+    data = response.json()
 
     rows = []
 
     for g in data["Infogempa"]["gempa"]:
+
         coord = g["Coordinates"].split(",")
         lat = float(coord[0])
         lon = float(coord[1])
 
-             rows.append({
+        rows.append({
             "Tanggal": g["Tanggal"],
             "Jam": g["Jam"],
             "Magnitude": float(g["Magnitude"]),
@@ -37,6 +39,7 @@ def load_data():
             "Bujur": lon,
             "Dirasakan": g.get("Dirasakan", "-")
         })
+
     return pd.DataFrame(rows)
 
 df = load_data()
@@ -67,7 +70,7 @@ if keyword:
         )
     ]
 
-c1,c2,c3 = st.columns(3)
+c1, c2, c3 = st.columns(3)
 
 c1.metric(
     "Jumlah Gempa",
@@ -81,21 +84,21 @@ c2.metric(
 
 c3.metric(
     "Rata-rata Magnitudo",
-    round(hasil["Magnitude"].mean(),2)
+    round(hasil["Magnitude"].mean(), 2)
 )
 
 st.subheader("🗺️ Peta Gempa")
 
 m = folium.Map(
-    location=[-2.5,118],
+    location=[-2.5, 118],
     zoom_start=5
 )
 
-for _,r in hasil.iterrows():
+for _, r in hasil.iterrows():
 
     folium.Marker(
-        [r["Lintang"],r["Bujur"]],
-       popup=f"""
+        [r["Lintang"], r["Bujur"]],
+        popup=f"""
 <b>{r['Wilayah']}</b><br>
 Magnitudo : {r['Magnitude']}<br>
 Kedalaman : {r['Kedalaman']}<br>
@@ -116,7 +119,7 @@ st.dataframe(
     use_container_width=True
 )
 
-st.subheader("ℹ Detail Gempa")
+st.subheader("ℹ️ Detail Gempa")
 
 pilih = st.selectbox(
     "Pilih Gempa",
@@ -124,3 +127,4 @@ pilih = st.selectbox(
 )
 
 st.write(hasil.loc[pilih])
+```
