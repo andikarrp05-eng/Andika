@@ -1,8 +1,13 @@
+```python
 import streamlit as st
 import pandas as pd
 import requests
 import folium
 from streamlit_folium import st_folium
+
+# ==========================
+# KONFIGURASI HALAMAN
+# ==========================
 
 st.set_page_config(
     page_title="SeismoTrack Indonesia",
@@ -10,14 +15,35 @@ st.set_page_config(
     layout="wide"
 )
 
+# ==========================
+# HEADER
+# ==========================
+
 st.title("🌍 SeismoTrack Indonesia")
-st.caption("Data realtime bersumber dari BMKG")
+st.markdown(
+"""
+### Sistem Monitoring Gempa Bumi Indonesia
+Data realtime bersumber dari BMKG
+---
+"""
+)
+
+# ==========================
+# SIDEBAR
+# ==========================
+
+st.sidebar.title("⚙️ Panel Kontrol")
+st.sidebar.markdown("---")
 
 URL = "https://data.bmkg.go.id/DataMKG/TEWS/gempadirasakan.json"
 
+# ==========================
+# AMBIL DATA BMKG
+# ==========================
 
 @st.cache_data(ttl=300)
 def load_data():
+
     response = requests.get(URL)
     data = response.json()
 
@@ -26,6 +52,7 @@ def load_data():
     for g in data["Infogempa"]["gempa"]:
 
         coord = g["Coordinates"].split(",")
+
         lat = float(coord[0])
         lon = float(coord[1])
 
@@ -45,7 +72,11 @@ def load_data():
 
 df = load_data()
 
-st.sidebar.header("Filter Gempa")
+# ==========================
+# FILTER
+# ==========================
+
+st.sidebar.subheader("🔍 Filter")
 
 min_mag = st.sidebar.slider(
     "Minimal Magnitudo",
@@ -55,41 +86,60 @@ min_mag = st.sidebar.slider(
     0.1
 )
 
-cari = st.sidebar.text_input(
+keyword = st.sidebar.text_input(
     "Cari Wilayah",
     ""
 )
 
 hasil = df[df["Magnitude"] >= min_mag]
 
-if cari != "":
+if keyword != "":
     hasil = hasil[
         hasil["Wilayah"].str.contains(
-            cari,
+            keyword,
             case=False,
             na=False
         )
     ]
 
-col1, col2, col3 = st.columns(3)
+# ==========================
+# DASHBOARD
+# ==========================
+
+st.subheader("📊 Dashboard")
+
+col1, col2, col3, col4 = st.columns(4)
 
 col1.metric(
-    "Jumlah Gempa",
+    "📌 Total Gempa",
     len(hasil)
 )
 
 if len(hasil) > 0:
+
     col2.metric(
-        "Magnitudo Maksimum",
+        "📈 Magnitudo Max",
         hasil["Magnitude"].max()
     )
 
     col3.metric(
-        "Rata-rata Magnitudo",
-        round(hasil["Magnitude"].mean(), 2)
+        "📊 Rata-rata M",
+        round(
+            hasil["Magnitude"].mean(),
+            2
+        )
     )
 
-st.subheader("🗺️ Peta Gempa")
+    col4.metric(
+        "🔎 Wilayah",
+        keyword if keyword else "Semua"
+    )
+
+# ==========================
+# PETA GEMPA
+# ==========================
+
+st.subheader("🗺️ Peta Gempa Indonesia")
 
 peta = folium.Map(
     location=[-2.5, 118],
@@ -98,17 +148,30 @@ peta = folium.Map(
 
 for _, r in hasil.iterrows():
 
-    folium.Marker(
-        location=[r["Lintang"], r["Bujur"]],
-        popup=
-        f"""
-        <b>{r['Wilayah']}</b><br>
-        Tanggal : {r['Tanggal']}<br>
-        Jam : {r['Jam']}<br>
-        Magnitudo : {r['Magnitude']}<br>
-        Kedalaman : {r['Kedalaman']}<br>
-        Dirasakan : {r['Dirasakan']}
-        """
+    if r["Magnitude"] >= 6:
+        warna = "red"
+    elif r["Magnitude"] >= 5:
+        warna = "orange"
+    else:
+        warna = "green"
+
+    folium.CircleMarker(
+        location=[
+            r["Lintang"],
+            r["Bujur"]
+        ],
+        radius=r["Magnitude"] * 2,
+        color=warna,
+        fill=True,
+        fill_opacity=0.8,
+        popup=f"""
+<b>{r['Wilayah']}</b><br>
+Tanggal : {r['Tanggal']}<br>
+Jam : {r['Jam']}<br>
+Magnitudo : {r['Magnitude']}<br>
+Kedalaman : {r['Kedalaman']}<br>
+Dirasakan : {r['Dirasakan']}
+"""
     ).add_to(peta)
 
 st_folium(
@@ -117,6 +180,23 @@ st_folium(
     height=500
 )
 
+# ==========================
+# GRAFIK MAGNITUDO
+# ==========================
+
+st.subheader("📈 Grafik Magnitudo")
+
+chart = hasil[[
+    "Wilayah",
+    "Magnitude"
+]].set_index("Wilayah")
+
+st.bar_chart(chart)
+
+# ==========================
+# TABEL DATA
+# ==========================
+
 st.subheader("📋 Data Gempa")
 
 st.dataframe(
@@ -124,14 +204,46 @@ st.dataframe(
     use_container_width=True
 )
 
+# ==========================
+# DETAIL GEMPA
+# ==========================
+
 st.subheader("🔍 Detail Gempa")
 
 if len(hasil) > 0:
-    pilihan = st.selectbox(
-        "Pilih Data",
+
+    pilih = st.selectbox(
+        "Pilih Data Gempa",
         hasil.index
     )
 
-    st.write(hasil.loc[pilihan])
-else:
-    st.warning("Data tidak ditemukan.")
+    st.write(
+        hasil.loc[pilih]
+    )
+
+# ==========================
+# DOWNLOAD CSV
+# ==========================
+
+csv = hasil.to_csv(
+    index=False
+).encode(
+    "utf-8"
+)
+
+st.download_button(
+    label="📥 Download Data Gempa",
+    data=csv,
+    file_name="Data_Gempa_BMKG.csv",
+    mime="text/csv"
+)
+
+# ==========================
+# FOOTER
+# ==========================
+
+st.markdown("---")
+st.caption(
+    "SeismoTrack Indonesia | Data Realtime BMKG | Dibuat dengan Streamlit"
+)
+```
