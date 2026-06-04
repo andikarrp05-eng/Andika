@@ -27,17 +27,16 @@ def load_data():
         lat = float(coord[0])
         lon = float(coord[1])
 
-        rows.append({
-            "Tanggal": g["Tanggal"],
-            "Jam": g["Jam"],
-            "Magnitude": float(g["Magnitude"]),
-            "Kedalaman": g["Kedalaman"],
-            "Wilayah": g["Wilayah"],
-            "Lintang": lat,
-            "Bujur": lon,
-            "Potensi": g["Potensi"]
-        })
-
+       rows.append({
+    "Tanggal": g["Tanggal"],
+    "Jam": g["Jam"],
+    "Magnitude": float(g["Magnitude"]),
+    "Kedalaman": g["Kedalaman"],
+    "Wilayah": g["Wilayah"],
+    "Lintang": lat,
+    "Bujur": lon,
+    "Potensi": g["Potensi"]
+})
     return pd.DataFrame(rows)
 
 df = load_data()
