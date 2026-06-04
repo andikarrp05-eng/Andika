@@ -1,4 +1,3 @@
-```python
 import streamlit as st
 import pandas as pd
 import requests
@@ -15,6 +14,7 @@ st.title("🌍 SeismoTrack Indonesia")
 st.caption("Data realtime bersumber dari BMKG")
 
 URL = "https://data.bmkg.go.id/DataMKG/TEWS/gempadirasakan.json"
+
 
 @st.cache_data(ttl=300)
 def load_data():
@@ -42,11 +42,12 @@ def load_data():
 
     return pd.DataFrame(rows)
 
+
 df = load_data()
 
-st.sidebar.header("Filter Data")
+st.sidebar.header("Filter Gempa")
 
-mag = st.sidebar.slider(
+min_mag = st.sidebar.slider(
     "Minimal Magnitudo",
     0.0,
     10.0,
@@ -54,42 +55,43 @@ mag = st.sidebar.slider(
     0.1
 )
 
-keyword = st.sidebar.text_input(
+cari = st.sidebar.text_input(
     "Cari Wilayah",
     ""
 )
 
-hasil = df[df["Magnitude"] >= mag]
+hasil = df[df["Magnitude"] >= min_mag]
 
-if keyword:
+if cari != "":
     hasil = hasil[
         hasil["Wilayah"].str.contains(
-            keyword,
+            cari,
             case=False,
             na=False
         )
     ]
 
-c1, c2, c3 = st.columns(3)
+col1, col2, col3 = st.columns(3)
 
-c1.metric(
+col1.metric(
     "Jumlah Gempa",
     len(hasil)
 )
 
-c2.metric(
-    "Magnitudo Maks",
-    hasil["Magnitude"].max()
-)
+if len(hasil) > 0:
+    col2.metric(
+        "Magnitudo Maksimum",
+        hasil["Magnitude"].max()
+    )
 
-c3.metric(
-    "Rata-rata Magnitudo",
-    round(hasil["Magnitude"].mean(), 2)
-)
+    col3.metric(
+        "Rata-rata Magnitudo",
+        round(hasil["Magnitude"].mean(), 2)
+    )
 
 st.subheader("🗺️ Peta Gempa")
 
-m = folium.Map(
+peta = folium.Map(
     location=[-2.5, 118],
     zoom_start=5
 )
@@ -97,17 +99,20 @@ m = folium.Map(
 for _, r in hasil.iterrows():
 
     folium.Marker(
-        [r["Lintang"], r["Bujur"]],
-        popup=f"""
-<b>{r['Wilayah']}</b><br>
-Magnitudo : {r['Magnitude']}<br>
-Kedalaman : {r['Kedalaman']}<br>
-Dirasakan : {r['Dirasakan']}
-"""
-    ).add_to(m)
+        location=[r["Lintang"], r["Bujur"]],
+        popup=
+        f"""
+        <b>{r['Wilayah']}</b><br>
+        Tanggal : {r['Tanggal']}<br>
+        Jam : {r['Jam']}<br>
+        Magnitudo : {r['Magnitude']}<br>
+        Kedalaman : {r['Kedalaman']}<br>
+        Dirasakan : {r['Dirasakan']}
+        """
+    ).add_to(peta)
 
 st_folium(
-    m,
+    peta,
     width=1200,
     height=500
 )
@@ -119,12 +124,14 @@ st.dataframe(
     use_container_width=True
 )
 
-st.subheader("ℹ️ Detail Gempa")
+st.subheader("🔍 Detail Gempa")
 
-pilih = st.selectbox(
-    "Pilih Gempa",
-    hasil.index
-)
+if len(hasil) > 0:
+    pilihan = st.selectbox(
+        "Pilih Data",
+        hasil.index
+    )
 
-st.write(hasil.loc[pilih])
-```
+    st.write(hasil.loc[pilihan])
+else:
+    st.warning("Data tidak ditemukan.")
