@@ -27,16 +27,16 @@ def load_data():
         lat = float(coord[0])
         lon = float(coord[1])
 
-      rows.append({
-    "Tanggal": g["Tanggal"],
-    "Jam": g["Jam"],
-    "Magnitude": float(g["Magnitude"]),
-    "Kedalaman": g["Kedalaman"],
-    "Wilayah": g["Wilayah"],
-    "Lintang": lat,
-    "Bujur": lon,
-    "Dirasakan": g.get("Dirasakan", "-")
-})
+             rows.append({
+            "Tanggal": g["Tanggal"],
+            "Jam": g["Jam"],
+            "Magnitude": float(g["Magnitude"]),
+            "Kedalaman": g["Kedalaman"],
+            "Wilayah": g["Wilayah"],
+            "Lintang": lat,
+            "Bujur": lon,
+            "Dirasakan": g.get("Dirasakan", "-")
+        })
     return pd.DataFrame(rows)
 
 df = load_data()
@@ -95,12 +95,12 @@ for _,r in hasil.iterrows():
 
     folium.Marker(
         [r["Lintang"],r["Bujur"]],
-        popup=f"""
-        <b>{r['Wilayah']}</b><br>
-        Magnitudo : {r['Magnitude']}<br>
-        Kedalaman : {r['Kedalaman']}<br>
-        {r['Potensi']}
-        """
+       popup=f"""
+<b>{r['Wilayah']}</b><br>
+Magnitudo : {r['Magnitude']}<br>
+Kedalaman : {r['Kedalaman']}<br>
+Dirasakan : {r['Dirasakan']}
+"""
     ).add_to(m)
 
 st_folium(
