@@ -116,7 +116,8 @@ if keyword:
     ]
 
 # ==========================================
-# ALARM GEMPA TERBARU
+# ==========================================
+# ALARM GEMPA TERBARU + SIREN
 # ==========================================
 
 if len(hasil) > 0:
@@ -130,14 +131,19 @@ if len(hasil) > 0:
     if mag_terbaru >= 6:
 
         st.error(
-            f"🚨 GEMPA BESAR TERDETEKSI | "
-            f"M {mag_terbaru} | "
-            f"{event_terbaru['Wilayah']}"
+            f"🚨 GEMPA BESAR TERDETEKSI\n\n"
+            f"📍 Lokasi : {event_terbaru['Wilayah']}\n\n"
+            f"📈 Magnitudo : M {mag_terbaru}\n\n"
+            f"⚠️ Segera cek informasi resmi BMKG"
         )
 
         try:
 
-            with open("alarm.mp3", "rb") as audio_file:
+            # nama file sesuai yang kamu upload
+            with open(
+                "11325622-police-siren-sound-effect-240674.mp3",
+                "rb"
+            ) as audio_file:
 
                 audio_bytes = audio_file.read()
 
@@ -146,12 +152,15 @@ if len(hasil) > 0:
                 format="audio/mp3"
             )
 
-        except:
-
-            st.warning(
-                "⚠️ File alarm.mp3 tidak ditemukan"
+            st.success(
+                "🔊 Siren peringatan berhasil dimuat"
             )
 
+        except Exception as e:
+
+            st.warning(
+                f"⚠️ File siren tidak ditemukan: {e}"
+            )
 # ==========================================
 # DASHBOARD
 # ==========================================
