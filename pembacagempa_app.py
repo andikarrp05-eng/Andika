@@ -59,12 +59,12 @@ def load_data():
     for g in data["Infogempa"]["gempa"]:
 
         rows.append({
-            "Tanggal": g["Tanggal"],
-            "Jam": g["Jam"],
-            "Magnitude": float(g["Magnitude"]),
-            "Kedalaman": g["Kedalaman"],
-            "Wilayah": g["Wilayah"],
-            "Koordinat": g["Coordinates"],
+            "Tanggal": g.get("Tanggal", ""),
+            "Jam": g.get("Jam", ""),
+            "Magnitude": float(g.get("Magnitude", 0)),
+            "Kedalaman": g.get("Kedalaman", ""),
+            "Wilayah": g.get("Wilayah", ""),
+            "Koordinat": g.get("Coordinates", ""),
             "Dirasakan": g.get("Dirasakan", "-")
         })
 
@@ -73,7 +73,7 @@ def load_data():
 df = load_data()
 
 if df.empty:
-    st.error("Gagal mengambil data BMKG")
+    st.error("❌ Gagal mengambil data dari BMKG")
     st.stop()
 
 # ==========================================
@@ -127,31 +127,52 @@ st.subheader("📊 Dashboard")
 
 col1, col2, col3, col4 = st.columns(4)
 
-col1.metric(
-    "📌 Total Event",
-    len(hasil)
-)
+if len(hasil) > 0:
 
-col2.metric(
-    "📈 Magnitudo Maks",
-    round(hasil["Magnitude"].max(), 2)
-)
+    col1.metric(
+        "📌 Total Event",
+        len(hasil)
+    )
 
-col3.metric(
-    "📊 Rata-rata Magnitudo",
-    round(hasil["Magnitude"].mean(), 2)
-)
+    col2.metric(
+        "📈 Magnitudo Maks",
+        round(
+            hasil["Magnitude"].max(),
+            2
+        )
+    )
 
-wilayah_aktif = (
-    hasil["Wilayah"]
-    .value_counts()
-    .idxmax()
-)
+    col3.metric(
+        "📊 Rata-rata Magnitudo",
+        round(
+            hasil["Magnitude"].mean(),
+            2
+        )
+    )
 
-col4.metric(
-    "🔥 Wilayah Aktif",
-    wilayah_aktif[:20]
-)
+    wilayah_counts = hasil["Wilayah"].value_counts()
+
+    wilayah_aktif = (
+        wilayah_counts.index[0]
+        if len(wilayah_counts) > 0
+        else "-"
+    )
+
+    col4.metric(
+        "🔥 Wilayah Aktif",
+        wilayah_aktif[:20]
+    )
+
+else:
+
+    col1.metric("📌 Total Event", 0)
+    col2.metric("📈 Magnitudo Maks", "-")
+    col3.metric("📊 Rata-rata Magnitudo", "-")
+    col4.metric("🔥 Wilayah Aktif", "-")
+
+    st.warning(
+        "Tidak ada data yang sesuai dengan filter."
+    )
 
 # ==========================================
 # PETA GEMPA
@@ -174,8 +195,13 @@ for _, row in hasil.iterrows():
 
     try:
 
-        lat = float(row["Koordinat"].split(",")[0])
-        lon = float(row["Koordinat"].split(",")[1])
+        koordinat = str(row["Koordinat"]).split(",")
+
+        if len(koordinat) != 2:
+            continue
+
+        lat = float(koordinat[0])
+        lon = float(koordinat[1])
 
         heat_data.append([
             lat,
@@ -213,10 +239,11 @@ for _, row in hasil.iterrows():
     except:
         pass
 
-if heat_data:
+if len(heat_data) > 0:
+
     HeatMap(
         heat_data,
-        radius=18
+        radius=20
     ).add_to(peta)
 
 st_folium(
@@ -231,26 +258,30 @@ st_folium(
 
 st.subheader("📈 Grafik Magnitudo")
 
-grafik_mag = hasil[
-    ["Wilayah", "Magnitude"]
-].set_index("Wilayah")
+if len(hasil) > 0:
 
-st.bar_chart(grafik_mag)
+    grafik = hasil[
+        ["Wilayah", "Magnitude"]
+    ].set_index("Wilayah")
+
+    st.bar_chart(grafik)
 
 # ==========================================
 # WILAYAH PALING AKTIF
 # ==========================================
 
-st.subheader("🔥 10 Wilayah Paling Aktif")
+st.subheader("🔥 Wilayah Paling Aktif")
 
-st.bar_chart(
-    hasil["Wilayah"]
-    .value_counts()
-    .head(10)
-)
+if len(hasil) > 0:
+
+    st.bar_chart(
+        hasil["Wilayah"]
+        .value_counts()
+        .head(10)
+    )
 
 # ==========================================
-# TABEL DATA
+# DATAFRAME
 # ==========================================
 
 st.subheader("📋 Data Gempa")
@@ -261,7 +292,7 @@ st.dataframe(
 )
 
 # ==========================================
-# DETAIL GEMPA
+# DETAIL EVENT
 # ==========================================
 
 st.subheader("🔍 Detail Event")
@@ -286,10 +317,10 @@ csv = hasil.to_csv(
 ).encode("utf-8")
 
 st.download_button(
-    label="📥 Download CSV",
-    data=csv,
-    file_name="gempa_bmkg.csv",
-    mime="text/csv"
+    "📥 Download CSV",
+    csv,
+    "gempa_bmkg.csv",
+    "text/csv"
 )
 
 # ==========================================
@@ -299,5 +330,5 @@ st.download_button(
 st.markdown("---")
 
 st.caption(
-    "SeismoTrack Indonesia v2.0 | Data BMKG Realtime | Streamlit"
+    "SeismoTrack Indonesia v2.0 | BMKG Realtime | Dibuat dengan Streamlit"
 )
