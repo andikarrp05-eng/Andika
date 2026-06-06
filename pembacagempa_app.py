@@ -5,13 +5,11 @@ import folium
 
 from folium.plugins import HeatMap
 from folium.plugins import MarkerCluster
-
 from streamlit_folium import st_folium
-from streamlit_autorefresh import st_autorefresh
 
-# =====================================
+# ==========================================
 # CONFIG
-# =====================================
+# ==========================================
 
 st.set_page_config(
     page_title="SeismoTrack Indonesia",
@@ -19,48 +17,42 @@ st.set_page_config(
     layout="wide"
 )
 
-# Refresh setiap 60 detik
-st_autorefresh(
-    interval=60000,
-    key="refresh"
-)
-
-# =====================================
+# ==========================================
 # HEADER
-# =====================================
+# ==========================================
 
 st.title("🌍 SeismoTrack Indonesia")
-st.markdown(
-"""
+
+st.markdown("""
 ### Sistem Monitoring Gempa Bumi Indonesia
 
 📡 Data Realtime BMKG
-⚡ Auto Update 60 Detik
 
 ---
-"""
-)
+""")
 
-# =====================================
+# ==========================================
 # SIDEBAR
-# =====================================
+# ==========================================
 
 st.sidebar.title("⚙️ Panel Kontrol")
-
 st.sidebar.success("🟢 Sistem Online")
 
-URL = "https://data.bmkg.go.id/DataMKG/TEWS/gempaterkini.json"
+# ==========================================
+# DATA BMKG
+# ==========================================
 
-# =====================================
-# LOAD DATA
-# =====================================
+URL = "https://data.bmkg.go.id/DataMKG/TEWS/gempaterkini.json"
 
 @st.cache_data(ttl=300)
 def load_data():
 
-    r = requests.get(URL)
+    response = requests.get(URL)
 
-    data = r.json()
+    if response.status_code != 200:
+        return pd.DataFrame()
+
+    data = response.json()
 
     rows = []
 
@@ -80,9 +72,13 @@ def load_data():
 
 df = load_data()
 
-# =====================================
+if df.empty:
+    st.error("Gagal mengambil data BMKG")
+    st.stop()
+
+# ==========================================
 # FILTER
-# =====================================
+# ==========================================
 
 st.sidebar.subheader("🔍 Filter")
 
@@ -95,13 +91,13 @@ min_mag = st.sidebar.slider(
 )
 
 keyword = st.sidebar.text_input(
-    "Cari Wilayah"
+    "Cari Wilayah",
+    ""
 )
 
 hasil = df[df["Magnitude"] >= min_mag]
 
 if keyword:
-
     hasil = hasil[
         hasil["Wilayah"].str.contains(
             keyword,
@@ -110,62 +106,56 @@ if keyword:
         )
     ]
 
-# =====================================
+# ==========================================
 # ALARM GEMPA BESAR
-# =====================================
+# ==========================================
 
 if len(hasil) > 0:
 
     max_mag = hasil["Magnitude"].max()
 
     if max_mag >= 6:
-
         st.error(
             f"🚨 PERINGATAN GEMPA BESAR TERDETEKSI (M {max_mag})"
         )
 
-# =====================================
+# ==========================================
 # DASHBOARD
-# =====================================
+# ==========================================
 
 st.subheader("📊 Dashboard")
 
-c1, c2, c3, c4 = st.columns(4)
+col1, col2, col3, col4 = st.columns(4)
 
-c1.metric(
+col1.metric(
     "📌 Total Event",
     len(hasil)
 )
 
-if len(hasil) > 0:
+col2.metric(
+    "📈 Magnitudo Maks",
+    round(hasil["Magnitude"].max(), 2)
+)
 
-    c2.metric(
-        "📈 Magnitudo Maks",
-        hasil["Magnitude"].max()
-    )
+col3.metric(
+    "📊 Rata-rata Magnitudo",
+    round(hasil["Magnitude"].mean(), 2)
+)
 
-    c3.metric(
-        "📊 Rata-rata Magnitudo",
-        round(
-            hasil["Magnitude"].mean(),
-            2
-        )
-    )
+wilayah_aktif = (
+    hasil["Wilayah"]
+    .value_counts()
+    .idxmax()
+)
 
-    wilayah_aktif = (
-        hasil["Wilayah"]
-        .value_counts()
-        .idxmax()
-    )
+col4.metric(
+    "🔥 Wilayah Aktif",
+    wilayah_aktif[:20]
+)
 
-    c4.metric(
-        "🔥 Wilayah Aktif",
-        wilayah_aktif[:20]
-    )
-
-# =====================================
-# PETA
-# =====================================
+# ==========================================
+# PETA GEMPA
+# ==========================================
 
 st.subheader("🗺️ Peta Gempa Indonesia")
 
@@ -180,53 +170,54 @@ cluster.add_to(peta)
 
 heat_data = []
 
-for _, r in hasil.iterrows():
+for _, row in hasil.iterrows():
 
-    lat = float(
-        r["Koordinat"].split(",")[0]
-    )
+    try:
 
-    lon = float(
-        r["Koordinat"].split(",")[1]
-    )
+        lat = float(row["Koordinat"].split(",")[0])
+        lon = float(row["Koordinat"].split(",")[1])
 
-    heat_data.append([
-        lat,
-        lon,
-        r["Magnitude"]
-    ])
+        heat_data.append([
+            lat,
+            lon,
+            row["Magnitude"]
+        ])
 
-    warna = "green"
+        warna = "green"
 
-    if r["Magnitude"] >= 6:
-        warna = "red"
+        if row["Magnitude"] >= 6:
+            warna = "red"
 
-    elif r["Magnitude"] >= 5:
-        warna = "orange"
+        elif row["Magnitude"] >= 5:
+            warna = "orange"
 
-    popup = f"""
-    <b>Wilayah:</b> {r['Wilayah']}<br>
-    <b>Magnitude:</b> {r['Magnitude']}<br>
-    <b>Kedalaman:</b> {r['Kedalaman']}<br>
-    <b>Tanggal:</b> {r['Tanggal']}<br>
-    <b>Jam:</b> {r['Jam']}<br>
-    <b>Dirasakan:</b> {r['Dirasakan']}
-    """
+        popup = f"""
+        <b>Wilayah:</b> {row['Wilayah']}<br>
+        <b>Magnitude:</b> {row['Magnitude']}<br>
+        <b>Kedalaman:</b> {row['Kedalaman']}<br>
+        <b>Tanggal:</b> {row['Tanggal']}<br>
+        <b>Jam:</b> {row['Jam']}<br>
+        <b>Dirasakan:</b> {row['Dirasakan']}
+        """
 
-    folium.CircleMarker(
-        location=[lat, lon],
-        radius=r["Magnitude"] * 2,
-        color=warna,
-        fill=True,
-        fill_color=warna,
-        fill_opacity=0.8,
-        popup=popup
-    ).add_to(cluster)
+        folium.CircleMarker(
+            location=[lat, lon],
+            radius=row["Magnitude"] * 2,
+            popup=popup,
+            color=warna,
+            fill=True,
+            fill_color=warna,
+            fill_opacity=0.8
+        ).add_to(cluster)
 
-HeatMap(
-    heat_data,
-    radius=20
-).add_to(peta)
+    except:
+        pass
+
+if heat_data:
+    HeatMap(
+        heat_data,
+        radius=18
+    ).add_to(peta)
 
 st_folium(
     peta,
@@ -234,23 +225,23 @@ st_folium(
     height=600
 )
 
-# =====================================
+# ==========================================
 # GRAFIK MAGNITUDO
-# =====================================
+# ==========================================
 
 st.subheader("📈 Grafik Magnitudo")
 
-chart = hasil[
+grafik_mag = hasil[
     ["Wilayah", "Magnitude"]
 ].set_index("Wilayah")
 
-st.bar_chart(chart)
+st.bar_chart(grafik_mag)
 
-# =====================================
-# WILAYAH AKTIF
-# =====================================
+# ==========================================
+# WILAYAH PALING AKTIF
+# ==========================================
 
-st.subheader("🔥 Wilayah Paling Aktif")
+st.subheader("🔥 10 Wilayah Paling Aktif")
 
 st.bar_chart(
     hasil["Wilayah"]
@@ -258,9 +249,9 @@ st.bar_chart(
     .head(10)
 )
 
-# =====================================
-# DATA TABLE
-# =====================================
+# ==========================================
+# TABEL DATA
+# ==========================================
 
 st.subheader("📋 Data Gempa")
 
@@ -269,11 +260,11 @@ st.dataframe(
     use_container_width=True
 )
 
-# =====================================
-# DETAIL EVENT
-# =====================================
+# ==========================================
+# DETAIL GEMPA
+# ==========================================
 
-st.subheader("🔍 Detail Gempa")
+st.subheader("🔍 Detail Event")
 
 if len(hasil) > 0:
 
@@ -286,27 +277,27 @@ if len(hasil) > 0:
         hasil.loc[pilih].to_dict()
     )
 
-# =====================================
-# DOWNLOAD
-# =====================================
+# ==========================================
+# DOWNLOAD CSV
+# ==========================================
 
 csv = hasil.to_csv(
     index=False
 ).encode("utf-8")
 
 st.download_button(
-    "📥 Download CSV",
-    csv,
-    "gempa_bmkg.csv",
-    "text/csv"
+    label="📥 Download CSV",
+    data=csv,
+    file_name="gempa_bmkg.csv",
+    mime="text/csv"
 )
 
-# =====================================
+# ==========================================
 # FOOTER
-# =====================================
+# ==========================================
 
 st.markdown("---")
 
 st.caption(
-    "SeismoTrack Indonesia v2.0 | BMKG Realtime | Streamlit"
+    "SeismoTrack Indonesia v2.0 | Data BMKG Realtime | Streamlit"
 )
