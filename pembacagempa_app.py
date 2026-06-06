@@ -3,8 +3,7 @@ import pandas as pd
 import requests
 import folium
 
-from folium.plugins import HeatMap
-from folium.plugins import MarkerCluster
+from folium.plugins import HeatMap, MarkerCluster
 from streamlit_folium import st_folium
 
 # ==========================================
@@ -39,41 +38,50 @@ st.sidebar.title("⚙️ Panel Kontrol")
 st.sidebar.success("🟢 Sistem Online")
 
 # ==========================================
-# DATA BMKG
+# BMKG API
 # ==========================================
 
 URL = "https://data.bmkg.go.id/DataMKG/TEWS/gempaterkini.json"
 
+# ==========================================
+# LOAD DATA
+# ==========================================
+
 @st.cache_data(ttl=300)
 def load_data():
 
-    response = requests.get(URL)
+    try:
 
-    if response.status_code != 200:
+        response = requests.get(URL, timeout=10)
+
+        if response.status_code != 200:
+            return pd.DataFrame()
+
+        data = response.json()
+
+        rows = []
+
+        for g in data["Infogempa"]["gempa"]:
+
+            rows.append({
+                "Tanggal": g.get("Tanggal", ""),
+                "Jam": g.get("Jam", ""),
+                "Magnitude": float(g.get("Magnitude", 0)),
+                "Kedalaman": g.get("Kedalaman", ""),
+                "Wilayah": g.get("Wilayah", ""),
+                "Koordinat": g.get("Coordinates", ""),
+                "Dirasakan": g.get("Dirasakan", "-")
+            })
+
+        return pd.DataFrame(rows)
+
+    except:
         return pd.DataFrame()
-
-    data = response.json()
-
-    rows = []
-
-    for g in data["Infogempa"]["gempa"]:
-
-        rows.append({
-            "Tanggal": g.get("Tanggal", ""),
-            "Jam": g.get("Jam", ""),
-            "Magnitude": float(g.get("Magnitude", 0)),
-            "Kedalaman": g.get("Kedalaman", ""),
-            "Wilayah": g.get("Wilayah", ""),
-            "Koordinat": g.get("Coordinates", ""),
-            "Dirasakan": g.get("Dirasakan", "-")
-        })
-
-    return pd.DataFrame(rows)
 
 df = load_data()
 
 if df.empty:
-    st.error("❌ Gagal mengambil data dari BMKG")
+    st.error("❌ Gagal mengambil data BMKG")
     st.stop()
 
 # ==========================================
@@ -98,6 +106,7 @@ keyword = st.sidebar.text_input(
 hasil = df[df["Magnitude"] >= min_mag]
 
 if keyword:
+
     hasil = hasil[
         hasil["Wilayah"].str.contains(
             keyword,
@@ -107,17 +116,41 @@ if keyword:
     ]
 
 # ==========================================
-# ALARM GEMPA BESAR
+# ALARM GEMPA TERBARU
 # ==========================================
 
 if len(hasil) > 0:
 
-    max_mag = hasil["Magnitude"].max()
+    event_terbaru = hasil.iloc[0]
 
-    if max_mag >= 6:
+    mag_terbaru = float(
+        event_terbaru["Magnitude"]
+    )
+
+    if mag_terbaru >= 6:
+
         st.error(
-            f"🚨 PERINGATAN GEMPA BESAR TERDETEKSI (M {max_mag})"
+            f"🚨 GEMPA BESAR TERDETEKSI | "
+            f"M {mag_terbaru} | "
+            f"{event_terbaru['Wilayah']}"
         )
+
+        try:
+
+            with open("alarm.mp3", "rb") as audio_file:
+
+                audio_bytes = audio_file.read()
+
+            st.audio(
+                audio_bytes,
+                format="audio/mp3"
+            )
+
+        except:
+
+            st.warning(
+                "⚠️ File alarm.mp3 tidak ditemukan"
+            )
 
 # ==========================================
 # DASHBOARD
@@ -186,8 +219,7 @@ peta = folium.Map(
     tiles="CartoDB dark_matter"
 )
 
-cluster = MarkerCluster()
-cluster.add_to(peta)
+cluster = MarkerCluster().add_to(peta)
 
 heat_data = []
 
@@ -195,13 +227,15 @@ for _, row in hasil.iterrows():
 
     try:
 
-        koordinat = str(row["Koordinat"]).split(",")
+        coord = str(
+            row["Koordinat"]
+        ).split(",")
 
-        if len(koordinat) != 2:
+        if len(coord) != 2:
             continue
 
-        lat = float(koordinat[0])
-        lon = float(koordinat[1])
+        lat = float(coord[0])
+        lon = float(coord[1])
 
         heat_data.append([
             lat,
@@ -229,11 +263,11 @@ for _, row in hasil.iterrows():
         folium.CircleMarker(
             location=[lat, lon],
             radius=row["Magnitude"] * 2,
-            popup=popup,
             color=warna,
             fill=True,
             fill_color=warna,
-            fill_opacity=0.8
+            fill_opacity=0.8,
+            popup=popup
         ).add_to(cluster)
 
     except:
@@ -281,7 +315,7 @@ if len(hasil) > 0:
     )
 
 # ==========================================
-# DATAFRAME
+# DATA GEMPA
 # ==========================================
 
 st.subheader("📋 Data Gempa")
@@ -330,5 +364,5 @@ st.download_button(
 st.markdown("---")
 
 st.caption(
-    "SeismoTrack Indonesia v2.0 | BMKG Realtime | Dibuat dengan Streamlit"
+    "SeismoTrack Indonesia v2.1 | BMKG Realtime | Streamlit"
 )
