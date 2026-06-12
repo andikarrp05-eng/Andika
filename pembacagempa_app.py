@@ -259,7 +259,22 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
-
+/* GPS Card */
+    .gps-card {
+        background: linear-gradient(135deg, #0a2a0a, #0d3b1a);
+        border: 1px solid #2e7d32;
+        padding: 20px 24px;
+        border-radius: 16px;
+        margin: 10px 0;
+        box-shadow: 0 8px 32px rgba(46, 125, 50, 0.3);
+    }
+    .gps-card h3 { color: #66bb6a; margin: 0 0 10px 0; font-weight: 700; }
+    .gps-card .gps-row {
+        display: flex; justify-content: space-between;
+        padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+        color: rgba(255,255,255,0.85); font-size: 0.92em;
+    }
+    .gps-card .gps-label { color: rgba(255,255,255,0.45); }
 # ==========================================
 # HEADER - Premium Hero
 # ==========================================
@@ -478,7 +493,137 @@ peta_mode = st.sidebar.radio(
 show_heatmap = st.sidebar.checkbox("🔥 Tampilkan Heatmap", value=True)
 show_markers = st.sidebar.checkbox("📍 Tampilkan Marker", value=True)
 show_epicenter_rings = st.sidebar.checkbox("🎯 Tampilkan Lingkaran Episenter", value=True)
+# ==========================================
+# GPS - DETEKSI LOKASI PENGGUNA
+# ==========================================
+st.markdown('<div class="section-header"><h3>📡 Lokasi GPS Pengguna</h3></div>', unsafe_allow_html=True)
 
+gps_html = """
+<div id="gps-box" style="margin: 10px 0;">
+    <button onclick="getLocation()" id="gps-btn" style="
+        background: linear-gradient(135deg, #2e7d32, #1b5e20);
+        color: white; border: none; padding: 12px 28px;
+        border-radius: 12px; cursor: pointer; font-size: 15px;
+        font-weight: 600; font-family: 'Inter', sans-serif;
+        box-shadow: 0 4px 16px rgba(46,125,50,0.4);
+        transition: transform 0.2s, box-shadow 0.2s;
+    "
+    onmouseover="this.style.transform='scale(1.05)'"
+    onmouseout="this.style.transform='scale(1)'">
+        📡 Deteksi Lokasi Saya
+    </button>
+    <span id="gps-status" style="margin-left:14px; color: rgba(255,255,255,0.6); font-size:0.9em; font-family:'Inter',sans-serif;"></span>
+</div>
+<div id="gps-result" style="display:none; margin-top:12px;
+     background: linear-gradient(135deg, #0a2a0a, #0d3b1a);
+     border: 1px solid #2e7d32; padding: 18px 22px; border-radius: 14px;
+     box-shadow: 0 8px 32px rgba(46,125,50,0.25); font-family:'Inter',sans-serif; color:white;">
+    <div style="font-size:1.1em; font-weight:700; color:#66bb6a; margin-bottom:10px;">📍 Posisi Anda Terdeteksi</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:0.9em;">
+        <div><span style="color:rgba(255,255,255,0.5);">Latitude</span><br><b id="gps-lat">—</b></div>
+        <div><span style="color:rgba(255,255,255,0.5);">Longitude</span><br><b id="gps-lon">—</b></div>
+        <div><span style="color:rgba(255,255,255,0.5);">Akurasi</span><br><b id="gps-acc">—</b></div>
+        <div><span style="color:rgba(255,255,255,0.5);">Waktu Deteksi</span><br><b id="gps-time">—</b></div>
+    </div>
+    <div style="margin-top:12px; border-top: 1px solid rgba(255,255,255,0.08); padding-top:10px;">
+        <a id="gps-maps-link" href="#" target="_blank" style="
+            display:inline-block; background:#1565C0; color:white;
+            padding:6px 16px; border-radius:8px; text-decoration:none;
+            font-size:0.82em; font-weight:600; margin-right:8px;">
+            🗺️ Buka di Google Maps
+        </a>
+        <button id="gps-apply-btn" onclick="applyGpsToRadius()" style="
+            background: linear-gradient(135deg, #e65100, #bf360c);
+            color:white; border:none; padding:6px 16px; border-radius:8px;
+            cursor:pointer; font-size:0.82em; font-weight:600;
+            font-family:'Inter',sans-serif;">
+            📐 Gunakan sbg Pusat Radius
+        </button>
+    </div>
+</div>
+
+<script>
+let userLat = null, userLon = null;
+
+function getLocation() {
+    const statusEl = document.getElementById('gps-status');
+    const btn = document.getElementById('gps-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Mendeteksi...';
+    statusEl.textContent = 'Meminta izin lokasi...';
+
+    if (!navigator.geolocation) {
+        statusEl.textContent = '❌ Browser tidak mendukung GPS.';
+        btn.disabled = false; btn.textContent = '📡 Deteksi Lokasi Saya';
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        function(pos) {
+            userLat = pos.coords.latitude;
+            userLon = pos.coords.longitude;
+            const acc = pos.coords.accuracy;
+            const now = new Date().toLocaleTimeString('id-ID');
+
+            document.getElementById('gps-lat').textContent = userLat.toFixed(6) + '°';
+            document.getElementById('gps-lon').textContent = userLon.toFixed(6) + '°';
+            document.getElementById('gps-acc').textContent = '± ' + Math.round(acc) + ' m';
+            document.getElementById('gps-time').textContent = now;
+            document.getElementById('gps-maps-link').href =
+                `https://www.google.com/maps?q=${userLat},${userLon}`;
+            document.getElementById('gps-result').style.display = 'block';
+            statusEl.textContent = '✅ Lokasi berhasil dideteksi!';
+            btn.disabled = false;
+            btn.textContent = '🔄 Perbarui Lokasi';
+
+            // Save to sessionStorage so Streamlit can access via query param workaround
+            sessionStorage.setItem('gps_lat', userLat);
+            sessionStorage.setItem('gps_lon', userLon);
+        },
+        function(err) {
+            let msg = '❌ Gagal mendapatkan lokasi.';
+            if (err.code === 1) msg = '❌ Izin lokasi ditolak.';
+            else if (err.code === 2) msg = '❌ Posisi tidak tersedia.';
+            else if (err.code === 3) msg = '❌ Timeout.';
+            statusEl.textContent = msg;
+            btn.disabled = false;
+            btn.textContent = '📡 Deteksi Lokasi Saya';
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+}
+
+function applyGpsToRadius() {
+    if (userLat && userLon) {
+        // Communicate back via URL (Streamlit workaround)
+        const url = new URL(window.parent.location.href);
+        url.searchParams.set('gps_lat', userLat.toFixed(6));
+        url.searchParams.set('gps_lon', userLon.toFixed(6));
+        window.parent.location.href = url.toString();
+    }
+}
+</script>
+"""
+st.components.v1.html(gps_html, height=280, scrolling=False)
+
+# Baca koordinat GPS dari query params (dikirim via URL redirect)
+query_params = st.query_params
+gps_lat_param = query_params.get("gps_lat", None)
+gps_lon_param = query_params.get("gps_lon", None)
+
+if gps_lat_param and gps_lon_param:
+    try:
+        gps_lat_val = float(gps_lat_param)
+        gps_lon_val = float(gps_lon_param)
+        st.success(f"📡 GPS aktif: Lat {gps_lat_val:.4f}°, Lon {gps_lon_val:.4f}° — filter radius diaktifkan otomatis.")
+        # Auto-aktifkan radius dari posisi GPS
+        use_radius = True
+        radius_lat = gps_lat_val
+        radius_lon = gps_lon_val
+        if "radius_km" not in dir():
+            radius_km = 300
+    except:
+        pass
 # ==========================================
 # APPLY FILTER
 # ==========================================
@@ -931,6 +1076,35 @@ if use_radius:
 
 # Render map
 st.markdown('<div class="map-container">', unsafe_allow_html=True)
+# Marker Lokasi Pengguna (dari GPS)
+if gps_lat_param and gps_lon_param:
+    try:
+        gps_user_lat = float(gps_lat_param)
+        gps_user_lon = float(gps_lon_param)
+        user_icon_html = """
+        <div style="
+            width: 22px; height: 22px;
+            background: #00e676;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 0 0 4px rgba(0,230,118,0.35), 0 0 20px rgba(0,230,118,0.6);
+            animation: gps-pulse 1.5s ease-out infinite;
+        "></div>
+        <style>
+        @keyframes gps-pulse {
+            0% { box-shadow: 0 0 0 4px rgba(0,230,118,0.35), 0 0 20px rgba(0,230,118,0.6); }
+            100% { box-shadow: 0 0 0 16px rgba(0,230,118,0), 0 0 30px rgba(0,230,118,0); }
+        }
+        </style>
+        """
+        folium.Marker(
+            location=[gps_user_lat, gps_user_lon],
+            icon=folium.DivIcon(html=user_icon_html, icon_size=(22, 22), icon_anchor=(11, 11)),
+            popup=folium.Popup(f"<b>📡 Posisi Saya</b><br>Lat: {gps_user_lat:.5f}°<br>Lon: {gps_user_lon:.5f}°", max_width=200),
+            tooltip="📡 Posisi Saya"
+        ).add_to(peta)
+    except:
+        pass
 st_folium(peta, width=None, height=700)
 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -1144,6 +1318,39 @@ if filter_info:
     st.caption("Filter aktif: " + " | ".join(filter_info))
 
 st.dataframe(hasil, use_container_width=True, height=400)
+# ==========================================
+# GEMPA TERDEKAT DARI LOKASI GPS
+# ==========================================
+if gps_lat_param and gps_lon_param and len(hasil) > 0:
+    st.markdown('<div class="section-header"><h3>📡 Gempa Terdekat dari Posisi Anda</h3></div>', unsafe_allow_html=True)
+    try:
+        gps_user_lat = float(gps_lat_param)
+        gps_user_lon = float(gps_lon_param)
+
+        def hitung_jarak(row):
+            try:
+                parts = str(row["Koordinat"]).split(",")
+                return haversine(gps_user_lat, gps_user_lon, float(parts[0]), float(parts[1]))
+            except:
+                return float("inf")
+
+        hasil_jarak = hasil.copy()
+        hasil_jarak["Jarak_km"] = hasil_jarak.apply(hitung_jarak, axis=1)
+        hasil_jarak = hasil_jarak.sort_values("Jarak_km").head(5)
+
+        for _, row in hasil_jarak.iterrows():
+            emoji = "🔴" if row["Magnitude"] >= 6 else "🟠" if row["Magnitude"] >= 5 else "🟡" if row["Magnitude"] >= 4 else "🟢"
+            jarak = row["Jarak_km"]
+            jarak_str = f"{jarak:.0f} km" if jarak < float("inf") else "—"
+            st.markdown(f"""
+            <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);border:1px solid rgba(255,255,255,0.07);
+                 padding:14px 18px;border-radius:12px;margin:6px 0;color:white;font-family:'Inter',sans-serif;">
+                {emoji} <b>M {row['Magnitude']}</b> &nbsp;|&nbsp; 📏 <b>{jarak_str}</b> dari posisi Anda
+                &nbsp;|&nbsp; 📍 {row['Wilayah']} &nbsp;|&nbsp; 🕐 {row['Tanggal']}
+            </div>
+            """, unsafe_allow_html=True)
+    except Exception as e:
+        st.warning(f"Tidak dapat menghitung jarak: {e}")
 
 # ==========================================
 # DOWNLOAD
