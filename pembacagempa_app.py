@@ -867,18 +867,25 @@ heat_data = []
 for _, row in hasil.iterrows():
     try:
         coord = str(row["Koordinat"]).split(",")
+
         if len(coord) != 2:
             continue
+
         lat = float(coord[0])
         lon = float(coord[1])
+
         jarak_user = None
 
-if user_lat is not None and user_lon is not None:
+        if user_lat is not None and user_lon is not None:
+            # perhitungan jarak
+            pass
 
-    R = 6371
+        # marker folium
+        # heatmap
+        # popup
 
-    dlat = math.radians(lat - user_lat)
-    dlon = math.radians(lon - user_lon)
+    except Exception:
+        continue
 
     a = math.sin(dlat/2)**2 + \
         math.cos(math.radians(user_lat)) * \
