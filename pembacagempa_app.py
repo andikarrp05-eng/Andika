@@ -8,6 +8,7 @@ import math
 from datetime import datetime
 from folium.plugins import HeatMap, MarkerCluster
 from streamlit_folium import st_folium
+from streamlit_geolocation import streamlit_geolocation
 
 # ==========================================
 # CONFIG
@@ -275,6 +276,35 @@ st.markdown("""
     </div>
 </div>
 """, unsafe_allow_html=True)
+
+# ==========================================
+# GPS PENGGUNA
+# ==========================================
+
+st.markdown("---")
+st.subheader("📍 Lokasi Pengguna (GPS)")
+if st.button("📍 Ambil Lokasi Saya"):
+    st.rerun()
+
+location = streamlit_geolocation()
+
+user_lat = None
+user_lon = None
+
+if location and location["latitude"] is not None:
+    user_lat = location["latitude"]
+    user_lon = location["longitude"]
+
+    st.success(
+        f"📍 Latitude: {user_lat:.6f} | Longitude: {user_lon:.6f}"
+    )
+else:
+    st.info("Klik Allow untuk mengaktifkan GPS")
+    st.success(
+        f"📍 Latitude: {user_lat:.6f} | Longitude: {user_lon:.6f}"
+    )
+else:
+    st.info("Izinkan akses lokasi untuk mengetahui posisi Anda.")
 
 # ==========================================
 # SIDEBAR
@@ -755,9 +785,14 @@ TILE_GOOGLE_HYBRID = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
 TILE_GOOGLE_SAT = "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
 
 # Map center
-if use_radius:
+if user_lat is not None and user_lon is not None:
+    map_center = [user_lat, user_lon]
+    map_zoom = 12
+
+elif use_radius:
     map_center = [radius_lat, radius_lon]
     map_zoom = 7
+
 else:
     map_center = [-2.5, 118]
     map_zoom = 5
@@ -771,6 +806,36 @@ elif peta_mode == "🌑 Mode Gelap (Dark)":
     peta = folium.Map(location=map_center, zoom_start=map_zoom, tiles="CartoDB dark_matter")
 else:
     peta = folium.Map(location=map_center, zoom_start=map_zoom, tiles="OpenStreetMap")
+
+    # ==========================================
+# MARKER GPS PENGGUNA
+# ==========================================
+
+if user_lat is not None and user_lon is not None:
+
+    folium.Marker(
+        location=[user_lat, user_lon],
+        popup=f"""
+        <b>📍 Lokasi Anda</b><br>
+        Latitude : {user_lat:.6f}<br>
+        Longitude : {user_lon:.6f}
+        """,
+        tooltip="📍 Lokasi Saya",
+        icon=folium.Icon(
+            color="blue",
+            icon="user",
+            prefix="fa"
+        )
+    ).add_to(peta)
+
+    # Lingkaran akurasi lokasi
+    folium.Circle(
+        location=[user_lat, user_lon],
+        radius=100,
+        color="blue",
+        fill=True,
+        fill_opacity=0.2
+    ).add_to(peta)
 
 # Add ALL tile layers as switchable overlays
 folium.TileLayer(
@@ -810,6 +875,23 @@ for _, row in hasil.iterrows():
             continue
         lat = float(coord[0])
         lon = float(coord[1])
+        jarak_user = None
+
+if user_lat is not None and user_lon is not None:
+
+    R = 6371
+
+    dlat = math.radians(lat - user_lat)
+    dlon = math.radians(lon - user_lon)
+
+    a = math.sin(dlat/2)**2 + \
+        math.cos(math.radians(user_lat)) * \
+        math.cos(math.radians(lat)) * \
+        math.sin(dlon/2)**2
+
+    c = 2 * math.asin(math.sqrt(a))
+
+    jarak_user = R * c
         heat_data.append([lat, lon, row["Magnitude"]])
 
         mag = row["Magnitude"]
@@ -846,6 +928,10 @@ for _, row in hasil.iterrows():
                 <div style="margin: 5px 0;"><span style="color: rgba(255,255,255,0.5);">🔊 Dirasakan</span><br><b>{row['Dirasakan']}</b></div>
                 <div style="margin: 5px 0;"><span style="color: rgba(255,255,255,0.5);">🌐 Koordinat</span><br><b>{row['Koordinat']}</b></div>
             </div>
+        <div style="margin: 5px 0;">
+    <span style="color: rgba(255,255,255,0.5);">📍 Jarak dari Anda</span><br>
+    <b>{round(jarak_user,1) if jarak_user is not None else '-'} km</b>
+</div>
             <div style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 10px;">
                 <a href="https://www.google.com/maps/@{lat},{lon},14z/data=!3m1!1e1" target="_blank"
                    style="display: inline-block; background: #1565C0; color: white; padding: 6px 14px; border-radius: 8px; text-decoration: none; font-size: 0.82em; font-weight: 600;">
