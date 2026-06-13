@@ -292,20 +292,16 @@ user_lat = None
 user_lon = None
 
 if location and location["latitude"] is not None:
+
     user_lat = location["latitude"]
     user_lon = location["longitude"]
 
     st.success(
         f"📍 Latitude: {user_lat:.6f} | Longitude: {user_lon:.6f}"
     )
+
 else:
     st.info("Klik Allow untuk mengaktifkan GPS")
-    st.success(
-        f"📍 Latitude: {user_lat:.6f} | Longitude: {user_lon:.6f}"
-    )
-else:
-    st.info("Izinkan akses lokasi untuk mengetahui posisi Anda.")
-
 # ==========================================
 # SIDEBAR
 # ==========================================
