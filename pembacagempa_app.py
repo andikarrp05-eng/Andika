@@ -876,9 +876,9 @@ for _, row in hasil.iterrows():
 
         jarak_user = None
         
-        if user_lat is not None and user_lon is not None:
+if user_lat is not None and user_lon is not None:
 
-    R = 6371
+     R = 6371
 
     dlat = math.radians(lat - user_lat)
     dlon = math.radians(lon - user_lon)
