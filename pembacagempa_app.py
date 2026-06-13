@@ -876,49 +876,49 @@ for _, row in hasil.iterrows():
 
         jarak_user = None
         
-if user_lat is not None and user_lon is not None:
-
-     R = 6371
-
-    dlat = math.radians(lat - user_lat)
-    dlon = math.radians(lon - user_lon)
-
-    a = math.sin(dlat/2)**2 + \
-        math.cos(math.radians(user_lat)) * \
-        math.cos(math.radians(lat)) * \
-        math.sin(dlon/2)**2
-
-    c = 2 * math.asin(math.sqrt(a))
-
-    jarak_user = R * c
-
-    a = math.sin(dlat/2)**2 + \
-        math.cos(math.radians(user_lat)) * \
-        math.cos(math.radians(lat)) * \
-        math.sin(dlon/2)**2
-
-    c = 2 * math.asin(math.sqrt(a))
-
-    jarak_user = R * c
-        heat_data.append([lat, lon, row["Magnitude"]])
-
-        mag = row["Magnitude"]
-        if mag >= 6:
-            warna = "#e53935"
-            border_color = "#ffcdd2"
-            icon_emoji = "🚨"
-        elif mag >= 5:
-            warna = "#ff9800"
-            border_color = "#ffe0b2"
-            icon_emoji = "⚠️"
-        elif mag >= 4:
-            warna = "#fdd835"
-            border_color = "#fff9c4"
-            icon_emoji = "📍"
-        else:
-            warna = "#66bb6a"
-            border_color = "#c8e6c9"
-            icon_emoji = "📍"
+        if user_lat is not None and user_lon is not None:
+        
+             R = 6371
+        
+            dlat = math.radians(lat - user_lat)
+            dlon = math.radians(lon - user_lon)
+        
+            a = math.sin(dlat/2)**2 + \
+                math.cos(math.radians(user_lat)) * \
+                math.cos(math.radians(lat)) * \
+                math.sin(dlon/2)**2
+        
+            c = 2 * math.asin(math.sqrt(a))
+        
+            jarak_user = R * c
+        
+            a = math.sin(dlat/2)**2 + \
+                math.cos(math.radians(user_lat)) * \
+                math.cos(math.radians(lat)) * \
+                math.sin(dlon/2)**2
+        
+            c = 2 * math.asin(math.sqrt(a))
+        
+            jarak_user = R * c
+                heat_data.append([lat, lon, row["Magnitude"]])
+        
+                mag = row["Magnitude"]
+                if mag >= 6:
+                    warna = "#e53935"
+                    border_color = "#ffcdd2"
+                    icon_emoji = "🚨"
+                elif mag >= 5:
+                    warna = "#ff9800"
+                    border_color = "#ffe0b2"
+                    icon_emoji = "⚠️"
+                elif mag >= 4:
+                    warna = "#fdd835"
+                    border_color = "#fff9c4"
+                    icon_emoji = "📍"
+                else:
+                    warna = "#66bb6a"
+                    border_color = "#c8e6c9"
+                    icon_emoji = "📍"
 
         # Rich popup HTML with satellite link
         popup_html = f"""
